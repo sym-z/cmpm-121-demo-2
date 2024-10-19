@@ -21,7 +21,8 @@ interface Point {
   x: number;
   y: number;
 }
-let lines: Point[][] = [];
+const lines: Point[][] = [];
+const redo_lines: Point[][] = [];
 let current_line: Point[] | null = null;
 
 // Event Listeners
@@ -30,13 +31,13 @@ const cursor = { active: false, x: 0, y: 0 };
 
 // Major help from the paint1.html example
 canvas.addEventListener("drawing_changed", () => {
-  if (cursor.active && ctx != null) {
+  if (ctx != null) {
     ctx.clearRect(0, 0, canvas.width, canvas.height);
     for (const line of lines) {
       if (line.length > 1) {
         ctx.beginPath();
         const { x, y } = line[0];
-        ctx.moveTo(x,y)
+        ctx.moveTo(x, y);
         for (const { x, y } of line) {
           ctx.lineTo(x, y);
         }
@@ -48,12 +49,13 @@ canvas.addEventListener("drawing_changed", () => {
 canvas.addEventListener("mousedown", (e) => {
   current_line = [];
   lines.push(current_line);
+  redo_lines.splice(0, redo_lines.length);
   cursor.active = true;
   addLine(e);
 });
 canvas.addEventListener("mousemove", (e) => {
   if (cursor.active && ctx != null) {
-    addLine(e)
+    addLine(e);
   }
 });
 canvas.addEventListener("mouseup", () => {
@@ -70,8 +72,38 @@ clear_button.innerHTML = "CLEAR";
 app.appendChild(clear_button);
 clear_button.addEventListener("click", () => {
   clearDrawing();
-  lines = [];
+  lines.splice(0, lines.length);
   current_line = null;
+});
+
+// Redo button
+const redo_button = document.createElement("button");
+redo_button.innerHTML = "REDO";
+app.appendChild(redo_button);
+redo_button.addEventListener("click", () => {
+  if (redo_lines.length > 0) {
+    const new_line: Point[] | undefined = redo_lines.pop();
+    if (new_line != undefined) {
+      lines.push(new_line);
+      canvas.dispatchEvent(drawing_changed);
+    }
+  }
+});
+
+// Undo button
+const undo_button = document.createElement("button");
+undo_button.innerHTML = "UNDO";
+app.appendChild(undo_button);
+undo_button.addEventListener("click", () => {
+  if (lines.length > 0) {
+    const old_line: Point[] | undefined = lines.pop();
+    if (old_line != undefined) {
+      redo_lines.push(old_line);
+      console.log(redo_lines)
+      console.log("lines: ", lines)
+      canvas.dispatchEvent(drawing_changed);
+    }
+  }
 });
 
 const APP_NAME = "Jack's Paint App";
