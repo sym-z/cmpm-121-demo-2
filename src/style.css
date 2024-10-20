@@ -78,6 +78,21 @@ button {
   cursor: pointer;
   transition: border-color 0.25s;
 }
+/* Help from Brace on syntax */
+.active
+{
+  border-radius: 8px;
+  border: 3px solid transparent;
+  border-color: #03bb11;
+  padding: 0.6em 1.2em;
+  font-size: 1em;
+  font-weight: 1000;
+  font-family: inherit;
+  background-color: #aaaaaa;
+  cursor: pointer;
+  transition: border-color 0.25s;
+
+}
 button:hover {
   border-color: #646cff;
 }
