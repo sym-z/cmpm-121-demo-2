@@ -48,8 +48,7 @@ class Line {
       ctx.fillText(this.symbol, x + STICKER_OFFSET_X, y + STICKER_OFFSET_Y);
     }
   }
-  drag(x : number, y:number)
-  {
+  drag(x: number, y: number) {
     if (this.isSticker) {
       this.points.splice(0, this.points.length);
     }
@@ -232,12 +231,27 @@ icon_offsetY = THIN_OFFSET_Y;
 let ACTIVE_BUTTON: HTMLElement = DEFAULT_BUTTON;
 let sticker_mode: boolean = false;
 // STICKERS
-// Apple button
-makeSticker("🍏");
-// Cowboy button
-makeSticker("🤠");
-// Turtle button
-makeSticker("🐢");
+const sticker_box = [{ icon: "🍏" }, { icon: "🤠" }, { icon: "🐢" }];
+for (const sticker of sticker_box) {
+  makeSticker(sticker.icon);
+}
+
+makeDiv();
+
+
+// Prompt button
+const prompt_button = document.createElement("button");
+prompt_button.innerHTML = "Click here to add a custom sticker!";
+app.appendChild(prompt_button);
+prompt_button.addEventListener("click", () => {
+  const user_response : string | null = prompt("Please type custom emoji here!", "Custom Sticker")
+  if(user_response != null)
+    {
+      makeSticker(user_response)
+    }
+});
+
+makeDiv();
 
 const APP_NAME = "Jack's Paint App";
 title.textContent = APP_NAME;
