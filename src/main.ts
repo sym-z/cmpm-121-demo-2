@@ -81,8 +81,11 @@ class MouseIcon {
     this.symbol = sym;
   }
   draw(ctx: CanvasRenderingContext2D) {
-    ctx.font = curr_font;
-    ctx.fillText(curr_symbol, this.x + icon_offsetX, this.y + icon_offsetY);
+    if(on_canvas)
+      {
+        ctx.font = curr_font;
+        ctx.fillText(curr_symbol, this.x + icon_offsetX, this.y + icon_offsetY);
+      }
   }
 }
 // Default value for the mouse's icon
@@ -238,7 +241,33 @@ for (const sticker of sticker_box) {
 
 makeDiv();
 
+// Export button
+const export_button = document.createElement("button");
+export_button.innerHTML = "Export";
+app.appendChild(export_button);
+export_button.addEventListener("click", () => {
+  const big_canvas = document.createElement("canvas");
+  big_canvas.width = 1024;
+  big_canvas.height = 1024;
+  app.appendChild(big_canvas);
+  const ctx2 = big_canvas.getContext("2d") 
+  if(ctx2 != null)
+    {
+      ctx2.scale(4,4);
+      for(const line of total_lines)
+        {
+          line.display(ctx2,thickness)
+        }
+        const anchor = document.createElement("a");
+        anchor.href = big_canvas.toDataURL("image/png");
+        anchor.download = "sketchpad.png";
+        anchor.click();
+        big_canvas.remove();
+    }
+  
+});
 
+makeDiv();
 // Prompt button
 const prompt_button = document.createElement("button");
 prompt_button.innerHTML = "Click here to add a custom sticker!";
