@@ -58,12 +58,12 @@ class Line {
 }
 // Controls the icon that follows the mouse on the canvas.
 const THICK_FONT: string = "48px monospace";
-const THIN_FONT: string = "16px monospace";
+const THIN_FONT: string = "24px monospace";
 const STICKER_FONT: string = "48px monospace";
 let curr_font: string = "32px monospace";
 // Pen offsets
-const THIN_OFFSET_X: number = -4;
-const THIN_OFFSET_Y: number = 8;
+const THIN_OFFSET_X: number = -6;
+const THIN_OFFSET_Y: number = 12;
 const THICK_OFFSET_X: number = -12;
 const THICK_OFFSET_Y: number = 24;
 // Sticker Placement offset
