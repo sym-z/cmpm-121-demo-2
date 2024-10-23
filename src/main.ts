@@ -6,36 +6,85 @@ const app = document.querySelector<HTMLDivElement>("#app")!;
 const title = document.createElement("h1");
 app.appendChild(title);
 
+// Export button
+const export_button = document.createElement("button");
+export_button.innerHTML = "EXPORT";
+app.appendChild(export_button);
+export_button.addEventListener("click", () => {
+  const big_canvas = document.createElement("canvas");
+  //4x Larger Canvas
+  big_canvas.width = 1024;
+  big_canvas.height = 1024;
+  app.appendChild(big_canvas);
+  const ctx2 = big_canvas.getContext("2d");
+  if (ctx2 != null) {
+    //4x Larger Canvas
+    ctx2.scale(4, 4);
+    for (const line of total_lines) {
+      line.display(ctx2, curr_thickness);
+    }
+    // Export code given by Professor Smith
+    const anchor = document.createElement("a");
+    anchor.href = big_canvas.toDataURL("image/png");
+    anchor.download = "sketchpad.png";
+    anchor.click();
+    big_canvas.remove();
+  }
+});
+
+makeDiv();
+
+// THE DRAWING CANVAS
 const canvas = createCanvas();
+const ctx: CanvasRenderingContext2D | null = canvas.getContext("2d");
+
+const drawing_changed: MouseEvent = new MouseEvent("drawing_changed");
+const tool_moved: MouseEvent = new MouseEvent("tool_moved");
+
 // Line thickness of thin and thick markers
 const THIN_DEF: number = 2;
 const THICK_DEF: number = 8;
-const ctx: CanvasRenderingContext2D | null = canvas.getContext("2d");
-let thickness: number = THIN_DEF;
-const drawing_changed: MouseEvent = new MouseEvent("drawing_changed");
-const tool_moved: MouseEvent = new MouseEvent("tool_moved");
+let curr_thickness: number = THIN_DEF;
+
+const DEFAULT_COLOR: string = "rgb(0,0,0)";
+let curr_color: string = DEFAULT_COLOR;
+
+let curr_rotation: number = 0;
 
 interface Point {
   x: number;
   y: number;
 }
+// LINES AND STICKERS
 class Line {
   points: Point[] = [];
   isSticker: boolean = false;
   thickness: number = 5;
   symbol: string = "";
-  constructor(start: Point, thick: number, isStick: boolean, sym: string) {
+  color: string = DEFAULT_COLOR;
+  rotation: number = 0;
+  constructor(
+    start: Point,
+    thick: number,
+    isStick: boolean,
+    sym: string,
+    col: string,
+    rot: number
+  ) {
     this.points.push(start);
     this.thickness = thick;
     this.isSticker = isStick;
     this.symbol = sym;
+    this.color = col;
+    this.rotation = rot;
   }
 
-  display(ctx: CanvasRenderingContext2D, t: number) {
+  display(ctx: CanvasRenderingContext2D, thickness: number) {
     const { x, y } = this.points[0];
     if (this.points.length > 1) {
       // Brace told me about lineWidth property
-      ctx.lineWidth = t;
+      ctx.strokeStyle = this.color;
+      ctx.lineWidth = thickness;
       ctx.beginPath();
       ctx.moveTo(x, y);
       for (const { x, y } of this.points) {
@@ -44,10 +93,10 @@ class Line {
       ctx.stroke();
       // If we are drawing a sticker, we only need to draw one point.
     } else if (this.isSticker) {
-      ctx.font = STICKER_FONT;
-      ctx.fillText(this.symbol, x + STICKER_OFFSET_X, y + STICKER_OFFSET_Y);
+      rotateAtPoint(ctx, x, y, this.symbol, this.rotation);
     }
   }
+  // If we are dragging a sticker, do not preserve the history
   drag(x: number, y: number) {
     if (this.isSticker) {
       this.points.splice(0, this.points.length);
@@ -55,6 +104,7 @@ class Line {
     this.points.push({ x: x, y: y });
   }
 }
+// MOUSE TOOLTIP
 // Controls the icon that follows the mouse on the canvas.
 const THICK_FONT: string = "48px monospace";
 const THIN_FONT: string = "24px monospace";
@@ -71,6 +121,8 @@ const STICKER_OFFSET_Y: number = 4;
 // Mouse Icon offset
 let icon_offsetX: number = -8;
 let icon_offsetY: number = 16;
+
+// The Tooltip
 class MouseIcon {
   x: number = 0;
   y: number = 0;
@@ -81,14 +133,15 @@ class MouseIcon {
     this.symbol = sym;
   }
   draw(ctx: CanvasRenderingContext2D) {
-    if(on_canvas)
-      {
-        ctx.font = curr_font;
+    if (on_canvas) {
+      ctx.font = curr_font;
+      if (sticker_mode) {
+        rotateAtPoint(ctx, this.x, this.y, this.symbol, curr_rotation);
+      } else {
+        ctx.fillStyle = curr_color;
         ctx.fillText(curr_symbol, this.x + icon_offsetX, this.y + icon_offsetY);
       }
-      else{
-        console.log("draw")
-      }
+    }
   }
 }
 // Default value for the mouse's icon
@@ -96,6 +149,7 @@ let custom_mouse: MouseIcon | null = null;
 // Default mouse Icon
 let curr_symbol: string = "*";
 
+// Holds line commands
 const total_lines: Line[] = [];
 const total_redo_lines: Line[] = [];
 let curr_line: Line | null = null;
@@ -104,6 +158,7 @@ let curr_line: Line | null = null;
 // Used the linked quant-paint.glitch.me/paint0.html and paint1.hmtl to help
 const cursor = { active: false, x: 0, y: 0 };
 
+// CUSTOM MOUSE EVENTS
 // Major help from the paint1.html example
 canvas.addEventListener("drawing_changed", () => {
   if (ctx != null) {
@@ -120,24 +175,40 @@ canvas.addEventListener("tool_moved", () => {
       canvas.dispatchEvent(drawing_changed);
       custom_mouse.draw(ctx);
     } else {
+      // If the mouse goes off the canvas, remove the tooltip
       canvas.dispatchEvent(drawing_changed);
     }
   }
 });
+
+// DEFAULT MOUSE EVENTS
 canvas.addEventListener("mousedown", (e) => {
-  //create empty line
+  cursor.active = true;
   cursor.x = e.offsetX;
   cursor.y = e.offsetY;
-  curr_line = new Line({ x: cursor.x, y: cursor.y }, thickness, false, "");
   if (sticker_mode) {
-    curr_line.isSticker = true;
-    curr_line.symbol = curr_symbol;
+    curr_line = new Line(
+      { x: cursor.x, y: cursor.y },
+      curr_thickness,
+      true,
+      curr_symbol,
+      DEFAULT_COLOR,
+      curr_rotation
+    );
+  } else {
+    curr_line = new Line(
+      { x: cursor.x, y: cursor.y },
+      curr_thickness,
+      false,
+      "",
+      curr_color,
+      0
+    );
   }
   //push into line array
   total_lines.push(curr_line);
   //empty redo's
   total_redo_lines.splice(0, total_redo_lines.length);
-  cursor.active = true;
   canvas.dispatchEvent(drawing_changed);
 });
 canvas.addEventListener("mousemove", (e) => {
@@ -158,6 +229,7 @@ canvas.addEventListener("mouseup", () => {
   cursor.active = false;
 });
 
+// Borders of Canvas
 let on_canvas: boolean = false;
 canvas.addEventListener("mouseenter", (e) => {
   on_canvas = true;
@@ -172,6 +244,7 @@ canvas.addEventListener("mouseout", () => {
 
 makeDiv();
 
+// IMAGE EDITING BUTTONS
 // Clear button
 const clear_button = document.createElement("button");
 clear_button.innerHTML = "CLEAR";
@@ -212,7 +285,7 @@ undo_button.addEventListener("click", () => {
 
 makeDiv();
 
-// Markers and Tools
+// MARKERS AND TOOLS
 interface Marker {
   size: number;
   font: string;
@@ -240,54 +313,33 @@ icon_offsetY = THIN_OFFSET_Y;
 // Acts as a pointer to allow for any amount of thickness buttons in the future.
 let ACTIVE_BUTTON: HTMLElement = DEFAULT_BUTTON;
 let sticker_mode: boolean = false;
-// STICKERS
-const sticker_box = [{ icon: "🍏" }, { icon: "🤠" }, { icon: "🐢" }, {icon: "🥴"}, {icon: "👒"}];
-for (const sticker of sticker_box) {
-  makeSticker(sticker.icon);
-}
 
-makeDiv();
-
-// Export button
-const export_button = document.createElement("button");
-export_button.innerHTML = "Export";
-app.appendChild(export_button);
-export_button.addEventListener("click", () => {
-  const big_canvas = document.createElement("canvas");
-  big_canvas.width = 1024;
-  big_canvas.height = 1024;
-  app.appendChild(big_canvas);
-  const ctx2 = big_canvas.getContext("2d") 
-  if(ctx2 != null)
-    {
-      ctx2.scale(4,4);
-      for(const line of total_lines)
-        {
-          line.display(ctx2,thickness)
-        }
-        const anchor = document.createElement("a");
-        anchor.href = big_canvas.toDataURL("image/png");
-        anchor.download = "sketchpad.png";
-        anchor.click();
-        big_canvas.remove();
-    }
-  
-});
-
-makeDiv();
 // Prompt button
 const prompt_button = document.createElement("button");
 prompt_button.innerHTML = "Click here to add a custom sticker!";
 app.appendChild(prompt_button);
 prompt_button.addEventListener("click", () => {
-  const user_response : string | null = prompt("Please type custom emoji here!", "Custom Sticker")
-  if(user_response != null)
-    {
-      makeSticker(user_response)
-    }
+  const user_response: string | null = prompt(
+    "Please type custom emoji here!",
+    "Custom Sticker"
+  );
+  if (user_response != null) {
+    makeSticker(user_response);
+  }
 });
 
 makeDiv();
+// STICKERS
+const sticker_box = [
+  { icon: "🍏" },
+  { icon: "🤠" },
+  { icon: "🐢" },
+  { icon: "🥴" },
+  { icon: "👒" },
+];
+for (const sticker of sticker_box) {
+  makeSticker(sticker.icon);
+}
 
 const APP_NAME = "Jack's Paint App";
 title.textContent = APP_NAME;
@@ -316,7 +368,9 @@ function switchButton(button: HTMLElement) {
   }
 }
 function changeTool(tool: Marker) {
-  thickness = tool.size;
+  curr_color = randColor();
+  curr_rotation = randAngle();
+  curr_thickness = tool.size;
   curr_font = tool.font;
   icon_offsetX = tool.offsetX;
   icon_offsetY = tool.offsetY;
@@ -368,4 +422,34 @@ function makeMarker(
     offsetY: offsetY,
   };
   return mark;
+}
+// Returns a random rgb string
+// Brace helped with understanding the Math.random() function
+function randColor(): string {
+  const r = Math.floor(Math.random() * 256);
+  const g = Math.floor(Math.random() * 256);
+  const b = Math.floor(Math.random() * 256);
+  return `rgb(${r},${g},${b})`;
+}
+function randAngle(): number {
+  return Math.floor(Math.random() * 361);
+}
+// Brace helped heavily when figuring out how to deal with how to properly rotate the stickers in accordance with their origins
+function rotateAtPoint(
+  ctx: CanvasRenderingContext2D,
+  x: number,
+  y: number,
+  symbol: string,
+  rotation: number
+) {
+  ctx.save();
+  // Translate to the sticker's center
+  ctx.translate(x, y);
+  // Rotate the canvas around the sticker's center
+  ctx.rotate((rotation * Math.PI) / 180);
+  // Draw the sticker symbol, adjusting offsets for proper centering
+  ctx.font = STICKER_FONT;
+  ctx.fillText(symbol, STICKER_OFFSET_X, STICKER_OFFSET_Y);
+  // Restore the canvas state after transformations
+  ctx.restore();
 }
