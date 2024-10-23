@@ -6,54 +6,70 @@ const app = document.querySelector<HTMLDivElement>("#app")!;
 const title = document.createElement("h1");
 app.appendChild(title);
 
-// Create drawing canvas
-const canvas = document.createElement("canvas");
-const WIDTH: number = 256;
-const HEIGHT: number = 256;
+const canvas = createCanvas();
 // Line thickness of thin and thick markers
 const THIN_DEF: number = 1;
 const THICK_DEF: number = 5;
-canvas.width = WIDTH;
-canvas.height = HEIGHT;
-app.appendChild(canvas);
 const ctx: CanvasRenderingContext2D | null = canvas.getContext("2d");
 let thickness: number = THIN_DEF;
 const drawing_changed: MouseEvent = new MouseEvent("drawing_changed");
 const tool_moved: MouseEvent = new MouseEvent("tool_moved");
+
 interface Point {
   x: number;
   y: number;
 }
 class Line {
   points: Point[] = [];
+  isSticker: boolean = false;
   thickness: number = 5;
-  constructor(start: Point, thick: number) {
+  symbol: string = "";
+  constructor(start: Point, thick: number, isStick: boolean, sym: string) {
     this.points.push(start);
     this.thickness = thick;
+    this.isSticker = isStick;
+    this.symbol = sym;
   }
 
   display(ctx: CanvasRenderingContext2D, t: number) {
+    const { x, y } = this.points[0];
     if (this.points.length > 1) {
       // Brace told me about lineWidth property
       ctx.lineWidth = t;
       ctx.beginPath();
-      const { x, y } = this.points[0];
       ctx.moveTo(x, y);
       for (const { x, y } of this.points) {
         ctx.lineTo(x, y);
       }
       ctx.stroke();
+      // If we are drawing a sticker, we only need to draw one point.
+    } else if (this.isSticker) {
+      ctx.font = STICKER_FONT;
+      ctx.fillText(this.symbol, x + STICKER_OFFSET_X, y + STICKER_OFFSET_Y);
     }
+  }
+  drag(x : number, y:number)
+  {
+    if (this.isSticker) {
+      this.points.splice(0, this.points.length);
+    }
+    this.points.push({ x: x, y: y });
   }
 }
 // Controls the icon that follows the mouse on the canvas.
 const THICK_FONT: string = "48px monospace";
 const THIN_FONT: string = "16px monospace";
+const STICKER_FONT: string = "48px monospace";
 let curr_font: string = "32px monospace";
+// Pen offsets
 const THIN_OFFSET_X: number = -4;
 const THIN_OFFSET_Y: number = 8;
 const THICK_OFFSET_X: number = -12;
 const THICK_OFFSET_Y: number = 24;
+// Sticker Placement offset
+const STICKER_OFFSET_X: number = -32;
+const STICKER_OFFSET_Y: number = 4;
+// Mouse Icon offset
 let icon_offsetX: number = -8;
 let icon_offsetY: number = 16;
 class MouseIcon {
@@ -67,13 +83,14 @@ class MouseIcon {
   }
   draw(ctx: CanvasRenderingContext2D) {
     ctx.font = curr_font;
-    ctx.fillText("*", this.x + icon_offsetX, this.y + icon_offsetY);
+    ctx.fillText(curr_symbol, this.x + icon_offsetX, this.y + icon_offsetY);
   }
 }
 // Default value for the mouse's icon
 let custom_mouse: MouseIcon | null = null;
+// Default mouse Icon
+let curr_symbol: string = "*";
 
-// For new object
 const total_lines: Line[] = [];
 const total_redo_lines: Line[] = [];
 let curr_line: Line | null = null;
@@ -92,17 +109,21 @@ canvas.addEventListener("drawing_changed", () => {
   }
 });
 canvas.addEventListener("tool_moved", () => {
-  if (ctx != null && on_canvas && custom_mouse != null) {
-      //Clear the canvas and redraw only current cursor postion
-      canvas.dispatchEvent(drawing_changed);
-      custom_mouse.draw(ctx);
+  if (ctx != null && on_canvas && custom_mouse != null && on_canvas) {
+    //Clear the canvas and redraw only current cursor postion
+    canvas.dispatchEvent(drawing_changed);
+    custom_mouse.draw(ctx);
   }
 });
 canvas.addEventListener("mousedown", (e) => {
   //create empty line
   cursor.x = e.offsetX;
   cursor.y = e.offsetY;
-  curr_line = new Line({ x: cursor.x, y: cursor.y }, thickness);
+  curr_line = new Line({ x: cursor.x, y: cursor.y }, thickness, false, "");
+  if (sticker_mode) {
+    curr_line.isSticker = true;
+    curr_line.symbol = curr_symbol;
+  }
   //push into line array
   total_lines.push(curr_line);
   //empty redo's
@@ -111,14 +132,15 @@ canvas.addEventListener("mousedown", (e) => {
   canvas.dispatchEvent(drawing_changed);
 });
 canvas.addEventListener("mousemove", (e) => {
-  if (ctx != null) {
-    if (cursor.active) {
+  if (ctx != null && on_canvas) {
+    if (cursor.active && curr_line != null) {
       cursor.x = e.offsetX;
       cursor.y = e.offsetY;
-      curr_line?.points.push({ x: cursor.x, y: cursor.y });
+      curr_line.drag(cursor.x, cursor.y);
       canvas.dispatchEvent(drawing_changed);
     } else {
-      custom_mouse = new MouseIcon(e.offsetX, e.offsetY, "*");
+      // Moving the mouse over the canvas while not drawing should redraw the icon
+      custom_mouse = new MouseIcon(e.offsetX, e.offsetY, curr_symbol);
       canvas.dispatchEvent(tool_moved);
     }
   }
@@ -130,7 +152,7 @@ canvas.addEventListener("mouseup", () => {
 let on_canvas: boolean = false;
 canvas.addEventListener("mouseenter", (e) => {
   on_canvas = true;
-  custom_mouse = new MouseIcon(e.offsetX, e.offsetY, "*");
+  custom_mouse = new MouseIcon(e.offsetX, e.offsetY, curr_symbol);
   canvas.dispatchEvent(tool_moved);
 });
 
@@ -139,9 +161,7 @@ canvas.addEventListener("mouseout", () => {
   canvas.dispatchEvent(tool_moved);
 });
 
-// Div
-const divider1 = document.createElement("div");
-app.appendChild(divider1);
+makeDiv();
 
 // Clear button
 const clear_button = document.createElement("button");
@@ -181,50 +201,58 @@ undo_button.addEventListener("click", () => {
   }
 });
 
-// Div
-const divider2 = document.createElement("div");
-app.appendChild(divider2);
+makeDiv();
 
 // Markers and Tools
-interface Marker
-{
+interface Marker {
   size: number;
   font: string;
   offsetX: number;
   offsetY: number;
 }
-const THICK_PEN : Marker = {size:THICK_DEF,font:THICK_FONT,offsetX:THICK_OFFSET_X,offsetY:THICK_OFFSET_Y}
-const THIN_PEN : Marker = {size:THIN_DEF,font:THIN_FONT,offsetX:THIN_OFFSET_X,offsetY:THIN_OFFSET_Y}
+// A reference to thin button is saved to activate it by default
+const DEFAULT_BUTTON = makePen(
+  "THIN",
+  THIN_DEF,
+  THIN_FONT,
+  THIN_OFFSET_X,
+  THIN_OFFSET_Y
+);
 
-// Thin button
-const thin_button = document.createElement("button");
-thin_button.innerHTML = "THIN";
-// Set the default tool to be the thin marker
-thin_button.classList.toggle("active");
+makePen("THICK", THICK_DEF, THICK_FONT, THICK_OFFSET_X, THICK_OFFSET_Y);
+
+makeDiv();
+
+// Set the default tool set up
+DEFAULT_BUTTON.classList.toggle("active");
 curr_font = THIN_FONT;
 icon_offsetX = THIN_OFFSET_X;
 icon_offsetY = THIN_OFFSET_Y;
-app.appendChild(thin_button);
-thin_button.addEventListener("click", () => {
-  changeTool(THIN_PEN)
-  switchButton(thin_button);
-});
-
-// Thick button
-const thick_button = document.createElement("button");
-thick_button.innerHTML = "THICK";
-app.appendChild(thick_button);
-thick_button.addEventListener("click", () => {
-  changeTool(THICK_PEN)
-  switchButton(thick_button);
-});
 // Acts as a pointer to allow for any amount of thickness buttons in the future.
-let ACTIVE_BUTTON: HTMLElement = thin_button;
+let ACTIVE_BUTTON: HTMLElement = DEFAULT_BUTTON;
+let sticker_mode: boolean = false;
+// STICKERS
+// Apple button
+makeSticker("🍏");
+// Cowboy button
+makeSticker("🤠");
+// Turtle button
+makeSticker("🐢");
 
 const APP_NAME = "Jack's Paint App";
 title.textContent = APP_NAME;
 document.title = APP_NAME;
 
+function createCanvas() {
+  // Create drawing canvas
+  const canvas = document.createElement("canvas");
+  const WIDTH: number = 256;
+  const HEIGHT: number = 256;
+  canvas.width = WIDTH;
+  canvas.height = HEIGHT;
+  app.appendChild(canvas);
+  return canvas;
+}
 function clearDrawing() {
   if (ctx != null) {
     ctx.clearRect(0, 0, canvas.width, canvas.height);
@@ -237,10 +265,57 @@ function switchButton(button: HTMLElement) {
     ACTIVE_BUTTON = button;
   }
 }
-function changeTool(tool:Marker)
-{
+function changeTool(tool: Marker) {
   thickness = tool.size;
   curr_font = tool.font;
   icon_offsetX = tool.offsetX;
   icon_offsetY = tool.offsetY;
+}
+function makeDiv() {
+  const divider = document.createElement("div");
+  app.appendChild(divider);
+}
+
+function makeSticker(icon: string) {
+  const button = document.createElement("button");
+  button.innerHTML = icon;
+  app.appendChild(button);
+  button.addEventListener("click", () => {
+    sticker_mode = true;
+    curr_symbol = icon;
+    changeTool(makeMarker(0, STICKER_FONT, STICKER_OFFSET_X, STICKER_OFFSET_Y));
+    switchButton(button);
+  });
+}
+function makePen(
+  innerText: string,
+  size: number,
+  font: string,
+  offsetX: number,
+  offsetY: number
+) {
+  const button = document.createElement("button");
+  button.innerHTML = innerText;
+  app.appendChild(button);
+  button.addEventListener("click", () => {
+    sticker_mode = false;
+    curr_symbol = "*";
+    changeTool(makeMarker(size, font, offsetX, offsetY));
+    switchButton(button);
+  });
+  return button;
+}
+function makeMarker(
+  size: number,
+  font: string,
+  offsetX: number,
+  offsetY: number
+) {
+  const mark: Marker = {
+    size: size,
+    font: font,
+    offsetX: offsetX,
+    offsetY: offsetY,
+  };
+  return mark;
 }
