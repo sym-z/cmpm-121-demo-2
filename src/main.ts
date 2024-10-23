@@ -8,8 +8,8 @@ app.appendChild(title);
 
 const canvas = createCanvas();
 // Line thickness of thin and thick markers
-const THIN_DEF: number = 1;
-const THICK_DEF: number = 5;
+const THIN_DEF: number = 2;
+const THICK_DEF: number = 8;
 const ctx: CanvasRenderingContext2D | null = canvas.getContext("2d");
 let thickness: number = THIN_DEF;
 const drawing_changed: MouseEvent = new MouseEvent("drawing_changed");
@@ -58,7 +58,7 @@ class Line {
 // Controls the icon that follows the mouse on the canvas.
 const THICK_FONT: string = "48px monospace";
 const THIN_FONT: string = "24px monospace";
-const STICKER_FONT: string = "48px monospace";
+const STICKER_FONT: string = "32px monospace";
 let curr_font: string = "32px monospace";
 // Pen offsets
 const THIN_OFFSET_X: number = -6;
@@ -66,7 +66,7 @@ const THIN_OFFSET_Y: number = 12;
 const THICK_OFFSET_X: number = -12;
 const THICK_OFFSET_Y: number = 24;
 // Sticker Placement offset
-const STICKER_OFFSET_X: number = -32;
+const STICKER_OFFSET_X: number = -22;
 const STICKER_OFFSET_Y: number = 4;
 // Mouse Icon offset
 let icon_offsetX: number = -8;
@@ -85,6 +85,9 @@ class MouseIcon {
       {
         ctx.font = curr_font;
         ctx.fillText(curr_symbol, this.x + icon_offsetX, this.y + icon_offsetY);
+      }
+      else{
+        console.log("draw")
       }
   }
 }
@@ -111,10 +114,14 @@ canvas.addEventListener("drawing_changed", () => {
   }
 });
 canvas.addEventListener("tool_moved", () => {
-  if (ctx != null && on_canvas && custom_mouse != null && on_canvas) {
-    //Clear the canvas and redraw only current cursor postion
-    canvas.dispatchEvent(drawing_changed);
-    custom_mouse.draw(ctx);
+  if (ctx != null && custom_mouse != null) {
+    if (on_canvas) {
+      //Clear the canvas and redraw only current cursor postion
+      canvas.dispatchEvent(drawing_changed);
+      custom_mouse.draw(ctx);
+    } else {
+      canvas.dispatchEvent(drawing_changed);
+    }
   }
 });
 canvas.addEventListener("mousedown", (e) => {
@@ -234,7 +241,7 @@ icon_offsetY = THIN_OFFSET_Y;
 let ACTIVE_BUTTON: HTMLElement = DEFAULT_BUTTON;
 let sticker_mode: boolean = false;
 // STICKERS
-const sticker_box = [{ icon: "🍏" }, { icon: "🤠" }, { icon: "🐢" }];
+const sticker_box = [{ icon: "🍏" }, { icon: "🤠" }, { icon: "🐢" }, {icon: "🥴"}, {icon: "👒"}];
 for (const sticker of sticker_box) {
   makeSticker(sticker.icon);
 }
