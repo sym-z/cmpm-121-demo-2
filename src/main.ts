@@ -9,10 +9,10 @@ const title = document.createElement("h1");
 app.appendChild(title);
 
 // Export button
-const export_button = document.createElement("button");
-export_button.innerHTML = "EXPORT";
-app.appendChild(export_button);
-export_button.addEventListener("click", () => {
+const exportButton = document.createElement("button");
+exportButton.innerHTML = "EXPORT";
+app.appendChild(exportButton);
+exportButton.addEventListener("click", () => {
   const big_canvas = document.createElement("canvas");
   //4x Larger Canvas
   big_canvas.width = 1024;
@@ -23,7 +23,7 @@ export_button.addEventListener("click", () => {
     //4x Larger Canvas
     ctx2.scale(4, 4);
     for (const line of total_lines) {
-      line.display(ctx2, curr_thickness);
+      line.display(ctx2, currThickness);
     }
     // Export code given by Professor Smith
     const anchor = document.createElement("a");
@@ -46,12 +46,12 @@ const drawing_changed = new MouseEvent("drawing_changed");
 // Line thickness of thin and thick markers
 const THIN_DEF = 2;
 const THICK_DEF = 8;
-let curr_thickness = THIN_DEF;
+let currThickness = THIN_DEF;
 
 const DEFAULT_COLOR: string = "rgb(0,0,0)";
-let curr_color: string = DEFAULT_COLOR;
+let currColor: string = DEFAULT_COLOR;
 
-let curr_rotation: number = 0;
+let currRotation: number = 0;
 
 interface Point {
   x: number;
@@ -111,7 +111,7 @@ class LineCommand {
 const THICK_FONT: string = "48px monospace";
 const THIN_FONT: string = "24px monospace";
 const STICKER_FONT: string = "32px monospace";
-let curr_font: string = "32px monospace";
+let currFont: string = "32px monospace";
 // Pen offsets
 const THIN_OFFSET_X: number = -6;
 const THIN_OFFSET_Y: number = 12;
@@ -132,11 +132,11 @@ class MouseIcon {
     readonly symbol: string
   ) {}
   draw(ctx: CanvasRenderingContext2D) {
-    ctx.font = curr_font;
+    ctx.font = currFont;
     if (sticker_mode) {
-      rotateAtPoint(ctx, this.x, this.y, this.symbol, curr_rotation);
+      rotateAtPoint(ctx, this.x, this.y, this.symbol, currRotation);
     } else {
-      ctx.fillStyle = curr_color;
+      ctx.fillStyle = currColor;
       ctx.fillText(curr_symbol, this.x + icon_offsetX, this.y + icon_offsetY);
     }
   }
@@ -175,19 +175,19 @@ canvas.addEventListener("mousedown", (e) => {
   if (sticker_mode) {
     curr_line = new LineCommand(
       [{ x: cursor.x, y: cursor.y }],
-      curr_thickness,
+      currThickness,
       true,
       curr_symbol,
       DEFAULT_COLOR,
-      curr_rotation
+      currRotation
     );
   } else {
     curr_line = new LineCommand(
       [{ x: cursor.x, y: cursor.y }],
-      curr_thickness,
+      currThickness,
       false,
       "",
-      curr_color,
+      currColor,
       0
     );
   }
@@ -228,19 +228,19 @@ makeDiv();
 
 // IMAGE EDITING BUTTONS
 // Clear button
-const clear_button = document.createElement("button");
-clear_button.innerHTML = "CLEAR";
-app.appendChild(clear_button);
-clear_button.addEventListener("click", () => {
+const clearButton = document.createElement("button");
+clearButton.innerHTML = "CLEAR";
+app.appendChild(clearButton);
+clearButton.addEventListener("click", () => {
   clearDrawing();
   total_lines.splice(0, total_lines.length);
 });
 
 // Redo button
-const redo_button = document.createElement("button");
-redo_button.innerHTML = "REDO";
-app.appendChild(redo_button);
-redo_button.addEventListener("click", () => {
+const redoButton = document.createElement("button");
+redoButton.innerHTML = "REDO";
+app.appendChild(redoButton);
+redoButton.addEventListener("click", () => {
   if (total_redo_lines) {
     total_lines.push(total_redo_lines.pop()!);
     canvas.dispatchEvent(drawing_changed);
@@ -248,10 +248,10 @@ redo_button.addEventListener("click", () => {
 });
 
 // Undo button
-const undo_button = document.createElement("button");
-undo_button.innerHTML = "UNDO";
-app.appendChild(undo_button);
-undo_button.addEventListener("click", () => {
+const undoButton = document.createElement("button");
+undoButton.innerHTML = "UNDO";
+app.appendChild(undoButton);
+undoButton.addEventListener("click", () => {
   if (total_lines) {
     total_redo_lines.push(total_lines.pop()!);
     canvas.dispatchEvent(drawing_changed);
@@ -282,7 +282,7 @@ makeDiv();
 
 // Set the default tool set up
 DEFAULT_BUTTON.classList.toggle("active");
-curr_font = THIN_FONT;
+currFont = THIN_FONT;
 icon_offsetX = THIN_OFFSET_X;
 icon_offsetY = THIN_OFFSET_Y;
 // Acts as a pointer to allow for any amount of thickness buttons in the future.
@@ -327,10 +327,10 @@ function switchButton(button: HTMLElement) {
   }
 }
 function changeTool(tool: Marker) {
-  curr_color = randColor();
-  curr_rotation = randAngle();
-  curr_thickness = tool.size;
-  curr_font = tool.font;
+  currColor = randColor();
+  currRotation = randAngle();
+  currThickness = tool.size;
+  currFont = tool.font;
   icon_offsetX = tool.offsetX;
   icon_offsetY = tool.offsetY;
 }
