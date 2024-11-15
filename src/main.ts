@@ -24,6 +24,9 @@ exportButton.addEventListener("click", () => {
     ctx2.scale(4, 4);
     for (const line of total_lines) {
       line.display(ctx2, currThickness);
+
+      //save drawings
+      saveJSON();
     }
     // Export code given by Professor Smith
     const anchor = document.createElement("a");
@@ -31,6 +34,28 @@ exportButton.addEventListener("click", () => {
     anchor.download = "sketchpad.png";
     anchor.click();
     big_canvas.remove();
+  }
+});
+
+function saveJSON(){
+  const json = JSON.stringify(total_lines);
+  localStorage.setItem("lines", json);
+}
+
+//load from json button
+const loadButton = document.createElement("button");
+loadButton.innerHTML = "LOAD";
+loadButton.title = "Load last exported drawing";
+app.appendChild(loadButton);
+loadButton.addEventListener("click", () => {
+  const savedLines = localStorage.getItem("lines");
+  if (savedLines) {
+    const parsedLines = JSON.parse(savedLines);
+    total_lines.length = 0; // Clear the current lines
+    parsedLines.forEach((line: any) => {
+      total_lines.push(new LineCommand(line.points, line.thickness, line.isSticker, line.symbol, line.color, line.rotation));
+    });
+    canvas.dispatchEvent(new CustomEvent("drawing_changed"));
   }
 });
 
@@ -79,6 +104,17 @@ class LineCommand {
     this.symbol = sym;
     this.color = col;
     this.rotation = rot;
+  }
+
+  toJSON(){
+    return {
+      points: this.points,
+      thickness: this.thickness,
+      isSticker: this.isSticker,
+      symbol: this.symbol,
+      color: this.color,
+      rotation: this.rotation
+    }
   }
 
   display(ctx: CanvasRenderingContext2D, thickness: number) {
